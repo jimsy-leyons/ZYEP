@@ -45,12 +45,25 @@ class ProviderController extends Controller
         if ($request->has('category_id')) {
             $catId = $request->category_id;
             $subIds = \App\Models\Category::where('parent_id', $catId)->pluck('id')->toArray();
-            
+
             if (!empty($subIds)) {
                 $query->whereIn('category_id', array_merge([$catId], $subIds));
             } else {
                 $query->where('category_id', $catId);
             }
+        }
+
+        // Filter by keyword: business name, description, area, or category name
+        if ($request->filled('keyword')) {
+            $keyword = $request->keyword;
+            $query->where(function ($q) use ($keyword) {
+                $q->where('business_name', 'like', "%{$keyword}%")
+                  ->orWhere('description', 'like', "%{$keyword}%")
+                  ->orWhere('area', 'like', "%{$keyword}%")
+                  ->orWhereHas('category', function ($catQuery) use ($keyword) {
+                      $catQuery->where('name', 'like', "%{$keyword}%");
+                  });
+            });
         }
 
         $providers = $query->paginate(15);
@@ -118,13 +131,16 @@ class ProviderController extends Controller
             }
         }
 
-        // Filter by keyword (business name or description)
+        // Filter by keyword: business name, description, area, or category name
         if ($request->filled('keyword')) {
             $keyword = $request->keyword;
             $query->where(function ($q) use ($keyword) {
                 $q->where('business_name', 'like', "%{$keyword}%")
                   ->orWhere('description', 'like', "%{$keyword}%")
-                  ->orWhere('area', 'like', "%{$keyword}%");
+                  ->orWhere('area', 'like', "%{$keyword}%")
+                  ->orWhereHas('category', function ($catQuery) use ($keyword) {
+                      $catQuery->where('name', 'like', "%{$keyword}%");
+                  });
             });
         }
 
