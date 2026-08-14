@@ -8,6 +8,10 @@ class Provider extends Model
 {
     protected $table = 'mproviders';
 
+    // NOTE: rating/status/is_verified are privileged fields, kept mass-assignable
+    // only because the Filament admin resource needs to set them directly.
+    // Never fill these from raw request input in an API controller — build an
+    // explicit array instead (see ProviderController::store for the pattern).
     protected $fillable = [
         'user_id',
         'business_name',

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Provider;
-use App\Models\SearchLog;
 use App\Models\ActionLog;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -37,7 +36,7 @@ class ProviderController extends Controller
             return response()->json(['message' => 'Please login to search providers.'], 401);
         }
 
-        $query = Provider::with(['user', 'category'])->where('status', 1);
+        $query = Provider::with(['user:id,name,phone', 'category'])->where('status', 1);
 
         if (Setting::get('verification_required', true)) {
             $query->where('is_verified', true);
@@ -188,6 +187,8 @@ class ProviderController extends Controller
         // Update user role to provider
         $user->update(['role' => 'provider']);
 
+        $existing = Provider::where('user_id', $user->id)->first();
+
         $provider = Provider::updateOrCreate(
             ['user_id' => $user->id],
             [
@@ -198,13 +199,19 @@ class ProviderController extends Controller
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'area' => $request->area,
-                'status' => 0, // Pending approval
+                // Only new profiles start pending; editing an existing profile
+                // (approved or not) preserves its current status.
+                'status' => $existing->status ?? 0,
                 'terms_accepted_at' => now(),
             ]
         );
 
+        $message = $existing
+            ? 'Provider profile updated successfully.'
+            : 'Provider profile created successfully. Awaiting admin approval.';
+
         return response()->json([
-            'message' => 'Provider profile updated successfully. Awaiting admin approval.',
+            'message' => $message,
             'provider' => $provider->load('category'),
         ]);
     }
@@ -218,7 +225,7 @@ class ProviderController extends Controller
             return response()->json(['message' => 'Please login to view provider details.'], 401);
         }
 
-        $provider = Provider::with(['user', 'category', 'activeSubscription.package'])->findOrFail($id);
+        $provider = Provider::with(['user:id,name,phone', 'category', 'activeSubscription.package'])->findOrFail($id);
         $user = Auth::guard('sanctum')->user();
 
         if (Setting::get('verification_required', true) && !$provider->is_verified) {
