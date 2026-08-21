@@ -181,6 +181,7 @@ class ProviderController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'area' => 'nullable|string',
+            'preferred_call_time' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -215,6 +216,7 @@ class ProviderController extends Controller
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'area' => $request->area,
+                'preferred_call_time' => $request->preferred_call_time,
                 // Only new profiles start pending; editing an existing profile
                 // (approved or not) preserves its current status.
                 'status' => $existing->status ?? 0,

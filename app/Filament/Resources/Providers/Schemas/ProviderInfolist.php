@@ -29,6 +29,8 @@ class ProviderInfolist
                     ->placeholder('-'),
                 TextEntry::make('area')
                     ->placeholder('-'),
+                TextEntry::make('preferred_call_time')
+                    ->placeholder('-'),
                 TextEntry::make('rating')
                     ->numeric(),
                 TextEntry::make('status')

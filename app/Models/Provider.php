@@ -21,6 +21,7 @@ class Provider extends Model
         'latitude',
         'longitude',
         'area',
+        'preferred_call_time',
         'rating',
         'status',
         'is_verified',

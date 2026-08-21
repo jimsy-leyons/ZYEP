@@ -39,6 +39,9 @@ class ProviderForm
                     ->default(null),
                 TextInput::make('area')
                     ->default(null),
+                TextInput::make('preferred_call_time')
+                    ->placeholder('e.g. Mon-Fri 9:00 AM - 5:00 PM, or Anytime')
+                    ->default(null),
                 TextInput::make('rating')
                     ->required()
                     ->numeric()
