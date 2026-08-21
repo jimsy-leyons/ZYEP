@@ -39,6 +39,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/providers', [ProviderController::class, 'store']); // Register as provider
     Route::get('/user/provider', [ProviderController::class, 'myProvider']);
     
+    // Aadhaar Verification
+    Route::post('/providers/aadhaar/send-otp', [ProviderController::class, 'sendAadhaarOtp']);
+    Route::post('/providers/aadhaar/verify-otp', [ProviderController::class, 'verifyAadhaarOtp']);
+    Route::post('/providers/aadhaar/upload-document', [ProviderController::class, 'uploadAadhaarDocument']);
+
     // Payments
     Route::post('/payments/order', [PaymentController::class, 'createOrder']);
     Route::post('/payments/verify', [PaymentController::class, 'verifyPayment']);

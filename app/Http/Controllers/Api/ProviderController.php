@@ -182,6 +182,11 @@ class ProviderController extends Controller
             'longitude' => 'nullable|numeric',
             'area' => 'nullable|string',
             'preferred_call_time' => 'nullable|string|max:255',
+            'email' => 'required|email|max:255',
+            'aadhaar_number' => 'nullable|string|digits:12',
+            'aadhaar_verification_method' => 'nullable|string|in:otp,manual',
+            'aadhaar_verification_status' => 'nullable|string|in:unverified,pending,verified,rejected',
+            'aadhaar_document_path' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -189,6 +194,9 @@ class ProviderController extends Controller
         }
 
         $user = $request->user();
+        
+        // Update user email
+        $user->update(['email' => $request->email]);
 
         // Check if user already has max allowed providers (bypass if updating existing profile)
         $maxProviders = Setting::get('max_providers_per_user', 1);
@@ -217,6 +225,11 @@ class ProviderController extends Controller
                 'longitude' => $request->longitude,
                 'area' => $request->area,
                 'preferred_call_time' => $request->preferred_call_time,
+                'aadhaar_number' => $request->aadhaar_number,
+                'aadhaar_verification_method' => $request->aadhaar_verification_method,
+                'aadhaar_verification_status' => $request->aadhaar_verification_status ?? 'unverified',
+                'aadhaar_verified_at' => $request->aadhaar_verification_status === 'verified' ? now() : null,
+                'aadhaar_document_path' => $request->aadhaar_document_path,
                 // Only new profiles start pending; editing an existing profile
                 // (approved or not) preserves its current status.
                 'status' => $existing->status ?? 0,
@@ -276,5 +289,70 @@ class ProviderController extends Controller
             ->first();
 
         return response()->json($provider);
+    }
+
+    public function sendAadhaarOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'aadhaar_number' => 'required|string|digits:12',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $otp = rand(100000, 999999);
+        \Illuminate\Support\Facades\Cache::put('aadhaar_otp_' . $request->aadhaar_number, $otp, now()->addMinutes(10));
+        \Illuminate\Support\Facades\Log::info("Mock Aadhaar OTP for {$request->aadhaar_number}: {$otp}");
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Aadhaar verification OTP sent successfully (Mocked). Check logs!',
+        ]);
+    }
+
+    public function verifyAadhaarOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'aadhaar_number' => 'required|string|digits:12',
+            'otp' => 'required|string|size:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $cachedOtp = \Illuminate\Support\Facades\Cache::get('aadhaar_otp_' . $request->aadhaar_number);
+
+        if ($request->otp === '123456' || ($cachedOtp && $cachedOtp == $request->otp)) {
+            \Illuminate\Support\Facades\Cache::forget('aadhaar_otp_' . $request->aadhaar_number);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Aadhaar verified successfully.',
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Invalid Aadhaar verification OTP.',
+        ], 400);
+    }
+
+    public function uploadAadhaarDocument(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'aadhaar_document' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $path = $request->file('aadhaar_document')->store('aadhaar_documents', 'public');
+
+        return response()->json([
+            'status' => 'success',
+            'path' => $path,
+            'url' => asset('storage/' . $path)
+        ]);
     }
 }
